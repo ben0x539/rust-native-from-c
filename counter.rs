@@ -1,4 +1,4 @@
-#![crate_type = "dylib"] // could also compile with --crate-type=dylib instead
+#![crate_type = "staticlib"] // could also compile with --crate-type=staticlib instead
 
 extern crate native;
 
