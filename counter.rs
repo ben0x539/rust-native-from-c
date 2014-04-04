@@ -2,30 +2,26 @@
 
 extern crate native;
 
-use std::io::timer::sleep;
 use std::cast::transmute;
-use std::libc::c_int;
+use std::libc::{c_int, sleep};
 
-// just some simple toy feature that exercises the rust runtime
-pub struct Counter(Receiver<int>);
+// just some simple toy feature that doesn't exercise the rust runtime
+pub struct Counter(int, int);
 
 impl Counter {
     pub fn new(count: int) -> Counter {
-        let (tx, rx) = channel::<int>();
-
-        spawn(proc() {
-            for i in range(0, count) {
-                sleep(1000);
-                tx.send(i);
-            }
-        });
-
-        return Counter(rx);
+        return Counter(0, count);
     }
 
-    pub fn wait(&self) -> Option<int> { 
-        let Counter(ref rx) = *self;
-        return rx.recv_opt();
+    pub fn wait(&mut self) -> Option<int> {
+        let Counter(ref mut current, to) = *self;
+        if *current < to {
+            *current += 1;
+            unsafe { sleep(1); }
+            Some(*current - 1)
+        } else {
+            None
+        }
     }
 }
 
@@ -72,18 +68,6 @@ pub extern "C" fn counter_free(raw_counter: *mut Counter) {
         // properly disposed of when it goes out of scope.
         let _counter: ~Counter = transmute(raw_counter);
     }
-}
-
-// This is a wrapper that boots up the rust runtime, runs a C "main"-style
-// function, and shuts down the rust runtime again. 
-//
-// Alternatively we could just provide the entry point ourselves, do that, and
-// then call some C code, but then I wouldn't get away with calling this whole
-// thing "calling rust from C programs" anymore.
-#[no_mangle]
-pub extern "C" fn run_with_runtime(argc: int, argv: **u8,
-                                   main: extern "C" fn(int, **u8)) -> int {
-    native::start(argc, argv, proc() main(argc, argv))
 }
 
 // these are ignored by rustc, unless invoked with --test, in which case rustc
